@@ -1,87 +1,71 @@
-/*
-This code is under the GNU General Public License - Use at free will
-    Credit wanted but not needed - Darkserver -
-*/
- 
-var nowAmount;
-var nowId;
-var nowData;
-var lastAmount;
-var lastId;
-var lastData;
-var lastBlock;
-var needAlert = false;
-var lastSlotId;
-var nowSlotId;
- 
-//add food item id's here 
+/* This code is under the GNU General Public License - Use at free will
+   Credit not needed - Darkserver */
+
+//add custom food item id's here
 var foodItems = [260,282,297,319,320,349,350,357,360,363,364,365,366,367,391,392,393,400];
- 
-//add inventory blocks here - or farming...
-var invBlocks = [54,58,61,62,60];
- 
-function useItem(x,y,z,itemId,blockId){
-    lastBlock = blockId; //set the last block the player tapped
-    if(invBlocks.indexOf(lastBlock)>=0){
-        needAlert = true; //alert the player when they hold a food item
-        alert = false;
-    }
-    if(invBlocks.indexOf(lastBlock)>=-1){ //if the last block is not an inv block
-        needAlert = false; // dont alert the player when they hold a food item
-        alert = false;
-    }
+
+//add blocks here that will take away any food
+var invBlocks = [54,58,60,61,62,250,251,252,253];
+
+function eatHook(foodId){ //get when the player eats an item
+	if(foodId==260){ //if you eat an apple
+		clientMessage("Ate An Apple!"); //does this.
+	}
 }
- 
-var tick = 0;
-var alert = false;
- 
+
+function newLevel(){
+	eatAPI.getCompatibleScripts(); //Leave this line, only compatible storage mod is BetterStorage by DAW330073
+}
+
 function modTick(){
-    //DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU ARE DOING
-    nowId = Player.getCarriedItem();
-    nowData = Player.getCarriedItemData();
-    nowAmount = Player.getCarriedItemCount();
-    nowSlotId = Player.getSelectedSlotId();
-    if(foodItems.indexOf(nowId)>=0){ //if the carried item is in foodItems array
-        if(needAlert&&!alert){
-            clientMessage("Please tap on a block without an inventory");
-            alert = true;
-        }
-        tick++; //add to tick
-        if(tick==20){ //if tick is 20
-            tick=0; //set tick back to 0
-            if(nowId==lastId){ //if the lastId & nowId match
-                if(nowData==lastData){ //if the lastData & nowData match
-                    if((lastId-1)==nowId){ //if the lastAmount is 1 more than nowAmount
-                        if(invBlocks.indexOf(lastBlock)==-1){ //if the last block tapped was not an inv block
-                            eatHook(lastId); //call eatHook
-                        }
-                    }
-                }
-            }
-            lastId = Player.getCarriedItem();
-            lastData = Player.getCarriedItemData();
-            lastAmount = Player.getCarriedItemCount();
-            lastSlotId = Player.getSelectedSlotId();
-        }
-    }
-    //trying to fix the single item bug...
-    if(nowId==0){ //if the player is now holding air
-        if(nowSlotId==lastSlotId){ //if the player hasn't changed slots
-            if(foodItems.indexOf(lastId)>=0){ //if the last item is in foodItems array
-                if(invBlocks.indexOf(lastBlock)==-1){ //if the last block tapped wasn't an inv block
-                    eatHook(lastId); //call eatHook
-                    lastId=0; //set last item to 0
-                }
-            }
-        }
-    }
-    //DO NOT EDIT ABOVE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+	
+	eatAPI.modTick(); //Leave this line here
 }
- 
-function eatHook(foodId){ //when the player eats an item
-    clientMessage("Debug Message: YOU ATE FOOD!");
-    if(foodId==260){ //if you eat an apple
-        //do this...
-        clientMessage("Ate An Apple!");
-    }
-}
+
+//DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU ARE DOING
+var eatAPI = {};
+var nowAmount, nowId, nowData, lastAmount, lastId, lastData, lookBlock, nowSlotId, lastSlotId;
+var tick = 0;
+
+eatAPI.modTick = function(){
+	lookBlock = Player.getPointedBlockId();
+	nowId = Player.getCarriedItem();
+	nowData = Player.getCarriedItemData();
+	nowAmount = Player.getCarriedItemCount();
+	nowSlotId = Player.getSelectedSlotId();
+	if(foodItems.indexOf(nowId)>=0){
+		tick++;
+		if(tick==10){
+			tick=0;
+			if(nowId==lastId&&nowData==lastData&&(lastAmount-1)==nowAmount&&invBlocks.indexOf(lookBlock)==-1){
+				eatHook(lastId);
+			}
+			lastId = Player.getCarriedItem();
+			lastData = Player.getCarriedItemData();
+			lastAmount = Player.getCarriedItemCount();
+			lastSlotId = Player.getSelectedSlotId();
+		}
+	}
+	if(nowId==0){
+		if(foodItems.indexOf(lastId)>=0&&lastAmount==1&&nowSlotId==lastSlotId&&invBlocks.indexOf(lookBlock)==-1){
+			eatHook(lastId);
+			lastId=0;
+		}
+		else{
+			lastId=0;
+		}
+	}
+	if(foodItems.indexOf(nowId)==-1&&nowId!==0){
+		lastId=0;
+	}
+};
+
+eatAPI.getCompatableScripts = function() {
+    var scripts = net.zhuoweizhang.mcpelauncher.ScriptManager.scripts;
+    for(var i = 0; i < scripts.size(); i++) {
+        var script = scripts.get(i);
+        var scope = script.scope;
+        if(org.mozilla.javascript.ScriptableObject.hasProperty(scope, "Inventory") && org.mozilla.javascript.ScriptableObject.hasProperty(scope, "BetterStorage") && org.mozilla.javascript.ScriptableObject.hasProperty(scope, "storageBlocks"))
+           invBlocks.push(250,251,252,253);
+	}
+};
